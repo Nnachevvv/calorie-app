@@ -71,11 +71,14 @@ func CreateTask(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	var task models.Login
-	_ = json.NewDecoder(r.Body).Decode(&task)
-	// fmt.Println(task, r.Body)
-	insertOneTask(task)
-	json.NewEncoder(w).Encode(task)
+	var loginRequest models.Login
+	err := json.NewDecoder(r.Body).Decode(&loginRequest)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	verifyUser(loginRequest)
+	json.NewEncoder(w).Encode(loginRequest)
 }
 
 // TaskComplete update task route
@@ -155,14 +158,20 @@ func getAllTask() []primitive.M {
 }
 
 // Insert one task in the DB
-func insertOneTask(task models.Login) {
-	insertResult, err := collection.InsertOne(context.Background(), task)
+func verifyUser(login models.Login) {
 
-	if err != nil {
-		log.Fatal(err)
+	//vaultPwd := argon2.IDKey([]byte(login.Username), []byte(login.Password), 1, 64*1024, 4, 32)
+
+	var user bson.M
+	if err := collection.FindOne(context.Background(), bson.M{"username": login.Username}).Decode(&user); err != nil {
+		fmt.Println("Could not find this user in our database")
 	}
+	//TODO check this try to decrypt
+	/*if user["password"] == vaultPwd {
+		fmt.Println("Successfully logged")
+	}*/
 
-	fmt.Println("Inserted a Single Record ", insertResult.InsertedID)
+	//fmt.Println("Inserted a Single Record ", insertResult.InsertedID)
 }
 
 // task complete method, update task's status to true
