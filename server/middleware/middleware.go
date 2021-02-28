@@ -3,11 +3,13 @@ package middleware
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/Nnachevv/calorieapp/models"
+	"golang.org/x/crypto/bcrypt"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -55,6 +57,9 @@ func init() {
 	fmt.Println("Collection instance created!")
 }
 
+//ErrWrongPassword error represent when password is wrong
+var ErrWrongPassword = errors.New("this password for this username is wrong")
+
 // LoginToSystem logins user into the system
 func LoginToSystem(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Context-Type", "application/x-www-form-urlencoded")
@@ -67,27 +72,33 @@ func LoginToSystem(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	verifyUser(userRequest)
-	json.NewEncoder(w).Encode(userRequest)
+	err = verifyUser(userRequest)
+	if err == ErrUserIsNotFound {
+		w.WriteHeader(http.StatusNotFound)
+		w.Write([]byte(ErrUserIsNotFound.Error()))
+	} else if err == ErrWrongPassword {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Write([]byte(ErrWrongPassword.Error()))
+	}
 }
 
 // Check if user is in database
-func verifyUser(login models.User) {
-
-	//vaultPwd := argon2.IDKey([]byte(login.Username), []byte(login.Password), 1, 64*1024, 4, 32)
-
+func verifyUser(login models.User) error {
 	user, err := MongoService.Find(login.Username, collection)
 	if err != nil {
-		fmt.Println("TODO")
+		return err
 	}
 
-	fmt.Println(user)
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(login.Password), bcrypt.DefaultCost)
+	if err != nil {
+		panic(err)
+	}
 
-	//TODO check this try to decrypt
-	/*if user["password"] == vaultPwd {
-		fmt.Println("Successfully logged")
-	}*/
+	// Comparing the password with the hash
+	err = bcrypt.CompareHashAndPassword(hashedPassword, []byte(user["password"].(string)))
+	if err != nil {
+		return ErrWrongPassword
+	}
 
-	//fmt.Println("Inserted a Single Record ", insertResult.InsertedID)
+	return nil
 }

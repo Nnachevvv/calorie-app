@@ -15,12 +15,15 @@ type MongoDatabase interface {
 type Service struct {
 }
 
+//ErrUserIsNotFound error represent when user is not present in database
+var ErrUserIsNotFound = errors.New("this user is not found")
+
 // Find gets data if exist from mongo db client
 func (s *Service) Find(username string, collection *mongo.Collection) (bson.M, error) {
 	var user bson.M
 	collection.FindOne(context.Background(), bson.M{"username": username}).Decode(&user)
 	if user == nil {
-		return nil, errors.New("failed to find this account")
+		return nil, ErrUserIsNotFound
 	}
 
 	return user, nil
