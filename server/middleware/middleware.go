@@ -31,7 +31,7 @@ var collection *mongo.Collection
 var MongoService MongoDatabase
 
 // create connection with mongo db
-func init() {
+func Connect() {
 
 	// Set client options
 	clientOptions := options.Client().ApplyURI(connectionString)
