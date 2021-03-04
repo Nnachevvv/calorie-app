@@ -60,8 +60,11 @@ func Connect() {
 //ErrWrongPassword error represent when password is wrong
 var ErrWrongPassword = errors.New("this password for this username is wrong")
 
-// LoginToSystem logins user into the system
-func LoginToSystem(w http.ResponseWriter, r *http.Request) {
+//ErrUserAlreadyExist represents when given user already exist
+var ErrUserAlreadyExist = errors.New("user already exist")
+
+// LoginUser logins user into the system
+func LoginUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Context-Type", "application/x-www-form-urlencoded")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST")
@@ -82,9 +85,30 @@ func LoginToSystem(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// RegisterUser register user into the system
+func RegisterUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Context-Type", "application/x-www-form-urlencoded")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+	var registerUserRegquest models.RegisterUser
+	err := json.NewDecoder(r.Body).Decode(&registerUserRegquest)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = registerUser(registerUserRegquest)
+	if err == ErrUserAlreadyExist {
+		w.WriteHeader(http.StatusConflict)
+		w.Write([]byte(ErrUserAlreadyExist.Error()))
+	}
+
+}
+
 // Check if user is in database
 func verifyUser(login models.User) error {
-	user, err := MongoService.Find(login.Username, collection)
+	user, err := MongoService.Find(login.Username)
 	if err != nil {
 		return err
 	}
@@ -98,6 +122,18 @@ func verifyUser(login models.User) error {
 	err = bcrypt.CompareHashAndPassword(hashedPassword, []byte(user["password"].(string)))
 	if err != nil {
 		return ErrWrongPassword
+	}
+
+	return nil
+}
+
+func registerUser(login models.RegisterUser) error {
+	if _, err := MongoService.Find(login.Username); err == nil {
+		return ErrUserAlreadyExist
+	}
+
+	if err := MongoService.Add(login); err != nil {
+		return err
 	}
 
 	return nil

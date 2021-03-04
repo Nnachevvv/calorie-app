@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 
+	"github.com/Nnachevv/calorieapp/models"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 type MongoDatabase interface {
-	Find(username string, collection *mongo.Collection) (bson.M, error)
+	Find(string) (bson.M, error)
+	Add(models.RegisterUser) error
 }
 
 type Service struct {
@@ -19,7 +20,7 @@ type Service struct {
 var ErrUserIsNotFound = errors.New("this user is not found")
 
 // Find gets data if exist from mongo db client
-func (s *Service) Find(username string, collection *mongo.Collection) (bson.M, error) {
+func (s *Service) Find(username string) (bson.M, error) {
 	var user bson.M
 	collection.FindOne(context.Background(), bson.M{"username": username}).Decode(&user)
 	if user == nil {
@@ -27,4 +28,14 @@ func (s *Service) Find(username string, collection *mongo.Collection) (bson.M, e
 	}
 
 	return user, nil
+}
+
+// Add user to database
+func (s *Service) Add(user models.RegisterUser) error {
+	_, err := collection.InsertOne(context.Background(), user)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

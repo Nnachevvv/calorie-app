@@ -5,9 +5,9 @@
 package mocks
 
 import (
+	models "github.com/Nnachevv/calorieapp/models"
 	gomock "github.com/golang/mock/gomock"
 	primitive "go.mongodb.org/mongo-driver/bson/primitive"
-	mongo "go.mongodb.org/mongo-driver/mongo"
 	reflect "reflect"
 )
 
@@ -34,17 +34,31 @@ func (m *MockMongoDatabase) EXPECT() *MockMongoDatabaseMockRecorder {
 	return m.recorder
 }
 
-// Find mocks base method
-func (m *MockMongoDatabase) Find(arg0 string, arg1 *mongo.Collection) (primitive.M, error) {
+// Add mocks base method
+func (m *MockMongoDatabase) Add(arg0 models.RegisterUser) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Find", arg0, arg1)
+	ret := m.ctrl.Call(m, "Add", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Add indicates an expected call of Add
+func (mr *MockMongoDatabaseMockRecorder) Add(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Add", reflect.TypeOf((*MockMongoDatabase)(nil).Add), arg0)
+}
+
+// Find mocks base method
+func (m *MockMongoDatabase) Find(arg0 string) (primitive.M, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Find", arg0)
 	ret0, _ := ret[0].(primitive.M)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Find indicates an expected call of Find
-func (mr *MockMongoDatabaseMockRecorder) Find(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockMongoDatabaseMockRecorder) Find(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Find", reflect.TypeOf((*MockMongoDatabase)(nil).Find), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Find", reflect.TypeOf((*MockMongoDatabase)(nil).Find), arg0)
 }

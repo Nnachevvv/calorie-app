@@ -10,6 +10,8 @@ func Router() *mux.Router {
 
 	router := mux.NewRouter()
 
-	router.HandleFunc("/api/login", middleware.LoginToSystem).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/login", middleware.LoginUser).Methods("POST", "OPTIONS")
+	router.HandleFunc("/api/register", middleware.RegisterUser).Methods("POST", "OPTIONS")
+
 	return router
 }
