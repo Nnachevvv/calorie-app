@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
+	"unicode"
 
 	"github.com/Nnachevv/calorieapp/models"
 	"golang.org/x/crypto/bcrypt"
@@ -63,6 +65,12 @@ var ErrWrongPassword = errors.New("this password for this username is wrong")
 //ErrUserAlreadyExist represents when given user already exist
 var ErrUserAlreadyExist = errors.New("user already exist")
 
+//ErrUserPasswordIsInvalid represents when password is invalid
+var ErrUserPasswordIsInvalid = errors.New("invalid password")
+
+//ErrUsernameIsInvalid represent when username is invalid
+var ErrUsernameIsInvalid = errors.New("invalid password")
+
 // LoginUser logins user into the system
 func LoginUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Context-Type", "application/x-www-form-urlencoded")
@@ -104,6 +112,16 @@ func RegisterUser(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(ErrUserAlreadyExist.Error()))
 	}
 
+	if err == ErrUsernameIsInvalid {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		w.Write([]byte(ErrUsernameIsInvalid.Error()))
+	}
+
+	if err == ErrUserPasswordIsInvalid {
+		w.WriteHeader(http.StatusUnprocessableEntity)
+		w.Write([]byte(ErrUserPasswordIsInvalid.Error()))
+	}
+
 }
 
 // Check if user is in database
@@ -127,7 +145,40 @@ func verifyUser(login models.User) error {
 	return nil
 }
 
+func verifyPassword(s string) bool {
+	letters := 0
+	var number, upper, special bool
+	for _, c := range s {
+		switch {
+		case unicode.IsNumber(c):
+			number = true
+		case unicode.IsUpper(c):
+			upper = true
+			letters++
+		case unicode.IsPunct(c) || unicode.IsSymbol(c):
+			special = true
+		case unicode.IsLetter(c) || c == ' ':
+			letters++
+		default:
+			return false
+		}
+	}
+
+	fmt.Println(number, upper, special, letters)
+	return (number && upper && special && letters >= 7)
+
+}
+
 func registerUser(login models.RegisterUser) error {
+	usernameRegex := regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9]+(?:-[a-zA-Z0-9]+)*$`)
+	if !usernameRegex.MatchString(login.Username) || len(login.Username) < 8 || len(login.Username) > 22 {
+		return ErrUsernameIsInvalid
+	}
+
+	if login.Password != login.ConfirmPassword || !verifyPassword(login.Password) {
+		return ErrUserPasswordIsInvalid
+	}
+
 	if _, err := MongoService.Find(login.Username); err == nil {
 		return ErrUserAlreadyExist
 	}

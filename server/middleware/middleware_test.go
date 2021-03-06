@@ -17,7 +17,7 @@ import (
 func TestLoginToSystem(t *testing.T) {
 	loginRequest := models.User{
 		Username: "test-name",
-		Password: "test-password",
+		Password: "ValidPassword1@",
 	}
 
 	requestByte, _ := json.Marshal(loginRequest)
@@ -35,7 +35,7 @@ func TestLoginToSystem(t *testing.T) {
 
 	mockMongoDB := mocks.NewMockMongoDatabase(mockCtrl)
 	middleware.MongoService = mockMongoDB
-	mockMongoDB.EXPECT().Find("test-name").Return(bson.M{"password": "test-password"}, nil).Times(1)
+	mockMongoDB.EXPECT().Find("test-name").Return(bson.M{"password": "ValidPassword1@"}, nil).Times(1)
 
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(middleware.LoginUser)
@@ -49,7 +49,7 @@ func TestLoginToSystem(t *testing.T) {
 func TestUserIsNotFoundInSystem(t *testing.T) {
 	loginRequest := models.User{
 		Username: "test-name",
-		Password: "test-password",
+		Password: "ValidPassword1@",
 	}
 
 	requestByte, _ := json.Marshal(loginRequest)
@@ -104,7 +104,7 @@ func TestUserTypeWrongHisPassword(t *testing.T) {
 	mockMongoDB := mocks.NewMockMongoDatabase(mockCtrl)
 	middleware.MongoService = mockMongoDB
 
-	mockMongoDB.EXPECT().Find("test-name").Return(bson.M{"password": "test-password"}, nil).Times(1)
+	mockMongoDB.EXPECT().Find("test-name").Return(bson.M{"password": "ValidPassword1@"}, nil).Times(1)
 
 	rr := httptest.NewRecorder()
 	handler := http.HandlerFunc(middleware.LoginUser)
@@ -122,8 +122,8 @@ func TestUserTypeWrongHisPassword(t *testing.T) {
 func TestUserRegister(t *testing.T) {
 	loginRequest := models.RegisterUser{
 		Username:        "test-name",
-		Password:        "test-password",
-		ConfirmPassword: "test-password",
+		Password:        "ValidPassword1@",
+		ConfirmPassword: "ValidPassword1@",
 		Email:           "test@mail.com",
 	}
 
@@ -157,8 +157,8 @@ func TestUserRegister(t *testing.T) {
 func TestAlreadyExistingUser(t *testing.T) {
 	loginRequest := models.RegisterUser{
 		Username:        "test-name",
-		Password:        "test-password",
-		ConfirmPassword: "test-password",
+		Password:        "ValidPassword1@",
+		ConfirmPassword: "ValidPassword1@",
 		Email:           "test@mail.com",
 	}
 
@@ -189,5 +189,142 @@ func TestAlreadyExistingUser(t *testing.T) {
 
 	if rr.Body.String() != middleware.ErrUserAlreadyExist.Error() {
 		t.Errorf("handler returned wrong error: got %v want %w", rr.Body.String(), middleware.ErrUserAlreadyExist)
+	}
+}
+
+func TestWhenPassedInvalidUserErrorIsThrown(t *testing.T) {
+	invalidRegisterUsers := []models.RegisterUser{{
+		Username:        "small",
+		Password:        "ValidPassword1@",
+		ConfirmPassword: "ValidPassword1@",
+		Email:           "test@mail.com",
+	}, {
+		Username:        "12withnumbers",
+		Password:        "ValidPassword1@",
+		ConfirmPassword: "ValidPassword1@",
+		Email:           "test@mail.com",
+	}, {
+		Username:        "_underscore",
+		Password:        "ValidPassword1@",
+		ConfirmPassword: "ValidPassword1@",
+		Email:           "test@mail.com",
+	},
+		{
+			Username:        "astringabove20characterslength",
+			Password:        "ValidPassword1@",
+			ConfirmPassword: "ValidPassword1@",
+			Email:           "test@mail.com",
+		},
+		{
+			Username:        ".dotstring",
+			Password:        "ValidPassword1@",
+			ConfirmPassword: "ValidPassword1@",
+			Email:           "test@mail.com",
+		},
+		{
+			Username:        "dots...attthemiddle",
+			Password:        "ValidPassword1@",
+			ConfirmPassword: "ValidPassword1@",
+			Email:           "test@mail.com",
+		},
+		{
+			Username:        "underscore__atmidle",
+			Password:        "ValidPassword1@",
+			ConfirmPassword: "ValidPassword1@",
+			Email:           "test@mail.com",
+		},
+	}
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockMongoDB := mocks.NewMockMongoDatabase(mockCtrl)
+	middleware.MongoService = mockMongoDB
+
+	for _, user := range invalidRegisterUsers {
+		requestByte, _ := json.Marshal(user)
+		requestReader := bytes.NewReader(requestByte)
+
+		req, err := http.NewRequest("POST", "/register", requestReader)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(middleware.RegisterUser)
+		handler.ServeHTTP(rr, req)
+
+		if status := rr.Code; status != http.StatusUnprocessableEntity {
+			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusUnprocessableEntity)
+		}
+
+		if rr.Body.String() != middleware.ErrUsernameIsInvalid.Error() {
+			t.Errorf("handler returned wrong error: got %v want %w", rr.Body.String(), middleware.ErrUserAlreadyExist)
+		}
+	}
+
+}
+
+func TestPasswordIsInvalid(t *testing.T) {
+	invalidUsersPasswords := []models.RegisterUser{{
+		Username:        "test-name",
+		Password:        "ShortWithoutNumber@",
+		ConfirmPassword: "ShortWithoutNumber",
+		Email:           "test@mail.com",
+	}, {
+		Username:        "test-name",
+		Password:        "short@",
+		ConfirmPassword: "short",
+		Email:           "test@mail.com",
+	}, {
+		Username:        "test-name",
+		Password:        "WithoutLatter@",
+		ConfirmPassword: "WithoutLatter",
+		Email:           "test@mail.com",
+	},
+		{
+			Username:        "test-name",
+			Password:        "notsamepassword",
+			ConfirmPassword: "notsamepassword",
+			Email:           "test@mail.com",
+		},
+		{
+			Username:        "test-name",
+			Password:        "withoutSpecialNumb",
+			ConfirmPassword: "withoutSpecialNumb",
+			Email:           "test@mail.com",
+		},
+	}
+
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	mockMongoDB := mocks.NewMockMongoDatabase(mockCtrl)
+	middleware.MongoService = mockMongoDB
+
+	for _, user := range invalidUsersPasswords {
+		requestByte, _ := json.Marshal(user)
+		requestReader := bytes.NewReader(requestByte)
+
+		req, err := http.NewRequest("POST", "/register", requestReader)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		rr := httptest.NewRecorder()
+		handler := http.HandlerFunc(middleware.RegisterUser)
+		handler.ServeHTTP(rr, req)
+
+		if status := rr.Code; status != http.StatusUnprocessableEntity {
+			t.Errorf("handler returned wrong status code: got %v want %v", status, http.StatusUnprocessableEntity)
+		}
+
+		if rr.Body.String() != middleware.ErrUserPasswordIsInvalid.Error() {
+			t.Errorf("handler returned wrong error: got %v want %w", rr.Body.String(), middleware.ErrUserPasswordIsInvalid)
+		}
 	}
 }
